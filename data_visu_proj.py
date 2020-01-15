@@ -117,13 +117,13 @@ app.layout = html.Div([
             )
         ], className='column1 pretty'),
 
-
+        html.Div([dcc.Graph(id='scattermapbox')], className='column2 pretty'),
 
     ], className='row'),
 
     html.Div([
 
-        html.Div([dcc.Graph(id='scattermapbox')], className='column2 pretty'),
+        html.Div([dcc.Graph(id='bar_graph')], className='column1 pretty'),
 
         html.Div([dcc.Graph(id='heatmap')], className='column3 pretty')
 
@@ -134,7 +134,8 @@ app.layout = html.Div([
 @app.callback(
     [
         Output("scattermapbox", "figure"),
-        Output("heatmap","figure")
+        Output("heatmap","figure"),
+        Output("bar_graph","figure")
     ],
     [
         Input("person_drop","value"),
@@ -161,11 +162,24 @@ def plots(person, year, month):
         longitudes.append(point_list_unique.loc[i, 'longitude'])
         persons.append(point_list_unique.loc[i, 'person'])
 
+
+        colors = []
+    for i,names in enumerate(persons):
+        if names == 'Ben':
+            colors.append('red')
+        if names == 'Carolina':
+            colors.append('yellow')
+        if names == 'Leo':
+            colors == 'blue'
+        if names == 'Pedro':
+            colors.append('green')
+
+
     data_scattermap=dict(type='scattermapbox',
                          mode="markers",
                          lon = longitudes,
                          lat = latitudes,
-                         marker = dict({'size' : 10}))
+                         marker = dict({'size' : 10},color=colors),alpha=0.3)
 
 
 
@@ -181,10 +195,19 @@ def plots(person, year, month):
                          mode="markers",
                          lon = longitudes,
                          lat = latitudes,
-                         marker = dict({'size' : list(map(lambda x: 2*x,list(map(log,counts))))}))
+                         marker = dict({'size' : list(map(lambda x: 2.5*x,list(map(log,counts))))},
+                                       color=colors,
+                                       alpha=0.1))
+
+    data_bar=dict(type='bar', x=x_bar, y=counts)
+
+    layout_bar = dict(title=dict(text='Most Popular Countries'),
+                      yaxis=dict(title='# of People'),
+                      paper_bgcolor='#f9f9f9')
 
     return [go.Figure(data=data_scattermap,layout=layout_scatter),
-    go.Figure(data = data_circle, layout = layout_scatter)]
+    go.Figure(data = data_circle, layout = layout_scatter),
+    go.Figure(data=data_bar, layout=layout_bar)]
 
 
 if __name__ == '__main__':
