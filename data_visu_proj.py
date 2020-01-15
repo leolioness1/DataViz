@@ -22,7 +22,7 @@ import plotly
 
 
 
-import plotly.io as pio
+#import plotly.io as pio
 
 
 
@@ -47,16 +47,24 @@ initial_month = list(location_data['month'].unique())
 
 location_data.head()
 
-longitudes = location_data['longitude'].tolist()
-latitudes = location_data['latitude'].tolist()
 
+"""
 
+location_data['latitude'] = list(map(round,location_data['latitude']))
+location_data['longitude'] = list(map(round,location_data['longitude']))
+point_list = []
+for i in range(0,len(location_data)):
+    point_list.append([location_data.loc[i,'latitude'],location_data.loc[i,'longitude'],location_data.loc[i,'person']])
+point_list_unique, counts = np.unique(point_list,axis=0,return_counts=True)
+latitudes = pd.DataFrame()
+longitudes = pd.DataFrame()
+persons = pd.DataFrame()
+for i,value in enumerate(point_list_unique):
+    latitudes.append(point_list_unique.loc[i,'latitude'])
+    longitudes.append(point_list_unique.loc[i,'longitude'])
+    persons.append(point_list_unique.loc[i,'person'])
 
-
-
-len(longitudes)
-
-
+"""
 
 app = dash.Dash(__name__)
 
@@ -109,29 +117,15 @@ app.layout = html.Div([
             )
         ], className='column1 pretty'),
 
-#        html.Div([
 
-#            html.Div([
-#
-#                html.Div([html.Label(id='gas_1')], className='mini pretty'),
-#                html.Div([html.Label(id='gas_2')], className='mini pretty'),
-#                html.Div([html.Label(id='gas_3')], className='mini pretty'),
-#                html.Div([html.Label(id='gas_4')], className='mini pretty'),
-#                html.Div([html.Label(id='gas_5')], className='mini pretty'),
-#
-#            ], className='5 containers row'),
-#
-#            html.Div([dcc.Graph(id='bar_graph')], className='bar_plot pretty')
-#
- #       ], className='column2'),
 
     ], className='row'),
 
     html.Div([
 
-        html.Div([dcc.Graph(id='choropleth')], className='column2 pretty'),
+        html.Div([dcc.Graph(id='scattermapbox')], className='column2 pretty'),
 
-        html.Div([dcc.Graph(id='aggregate_graph')], className='column3 pretty')
+        html.Div([dcc.Graph(id='heatmap')], className='column3 pretty')
 
     ], className='row'),
 
@@ -139,8 +133,8 @@ app.layout = html.Div([
 
 @app.callback(
     [
-        Output("choropleth", "figure"),
-        Output("aggregate_graph","figure")
+        Output("scattermapbox", "figure"),
+        Output("heatmap","figure")
     ],
     [
         Input("person_drop","value"),
@@ -149,22 +143,48 @@ app.layout = html.Div([
     ]
 )
 def plots(person, year, month):
-    import plotly.graph_objects as go
-    longitudes
-    fig = go.Figure(go.Scattermapbox(
-        mode = "markers",
-        lon = longitudes,
-        lat = latitudes,
-        marker = {'size': 10}))
 
 
-    fig.update_layout(
-        margin ={'l':0,'t':0,'b':0,'r':0},
-        mapbox = {
-            'center': {'lon': 10, 'lat': 10},
-            'style': "stamen-terrain",
-            'center': {'lon': -20, 'lat': -20},
-            'zoom': 1})
+    location_data_useful = location_data.loc[location_data['person'].isin(person)]
+    location_data_useful = location_data_useful.loc[location_data_useful['year'].isin(year)]
+    location_data_useful = location_data_useful.loc[location_data_useful['month'].isin(month)]
+    point_list = []
+    for i in range(0, len(location_data_useful)):
+        point_list.append(
+            [location_data.loc[i, 'latitude'], location_data.loc[i, 'longitude'], location_data.loc[i, 'person']])
+    point_list_unique, counts = np.unique(point_list, axis=0, return_counts=True)
+    latitudes = []
+    longitudes = []
+    persons = []
+    for i, value in enumerate(point_list_unique):
+        latitudes.append(point_list_unique.loc[i, 'latitude'])
+        longitudes.append(point_list_unique.loc[i, 'longitude'])
+        persons.append(point_list_unique.loc[i, 'person'])
+
+    data_scattermap=dict(type='scattermapbox',
+                         mode="markers",
+                         lon = longitudes,
+                         lat = latitudes,
+                         marker = dict({'size' : 10}))
+
+
+
+    layout_scatter = dict(margin ={'l':0,'t':0,'b':0,'r':0},
+                        mapbox = {
+                        'center': {'lon': 10, 'lat': 10},
+                        'style': "stamen-terrain",
+                        'center': {'lon': -20, 'lat': -20},
+                        'zoom': 1})
+    from math import log
+
+    data_circle = dict(type='scattermapbox',
+                         mode="markers",
+                         lon = longitudes,
+                         lat = latitudes,
+                         marker = dict({'size' : list(map(lambda x: 2*x,list(map(log,counts))))}))
+
+    return [go.Figure(data=data_scattermap,layout=layout_scatter),
+    go.Figure(data = data_circle, layout = layout_scatter)]
 
 
 if __name__ == '__main__':
