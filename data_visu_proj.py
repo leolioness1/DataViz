@@ -36,10 +36,15 @@ import simplejson as json
 location_data=pd.read_pickle(os.getcwd()+"\\merged_location_data.pkl")
 
 location_data['datetime'] =pd.to_datetime(location_data['datetime'])
-location_data['year'] = location_data['datetime'].dt.year
-location_data['month'] =location_data['datetime'].dt.month
+location_data=location_data.set_index('datetime')
+
+location_data=location_data.drop(['accuracy', 'activity', 'altitude','heading','timestamp', 'velocity', 'verticalAccuracy'],axis=1)
+location_data = location_data.groupby(['person', pd.Grouper(freq='D'),'latitude','longitude'],as_index=False,sort=False).size().reset_index(drop=False)
+#grouped_mean = location_data.groupby(['person', pd.Grouper(freq='D')],sort=False)['latitude','longitude'].mean().reset_index(drop=False)
 
 name_options = [dict(label=name, value=name) for name in location_data['person'].unique()]
+location_data['year'] = location_data['datetime'].dt.year
+location_data['month'] =location_data['datetime'].dt.month
 year_options = [dict(label=year, value=year) for year in location_data['year'].unique()]
 initial_year = list(range(min(location_data['year']),max(location_data['year'])))
 month_options = [dict(label = month, value = month) for month in location_data['month'].unique()]
@@ -149,6 +154,11 @@ def plots(person, year, month):
     location_data_useful = location_data.loc[location_data['person'].isin(person)]
     location_data_useful = location_data_useful.loc[location_data_useful['year'].isin(year)]
     location_data_useful = location_data_useful.loc[location_data_useful['month'].isin(month)]
+    latitudes = location_data_useful['latitudes']
+    longitudes = location_data_useful['longitudes']
+    persons = location_data_useful['person']
+
+    """
     point_list = []
     for i in range(0, len(location_data_useful)):
         point_list.append(
@@ -161,9 +171,9 @@ def plots(person, year, month):
         latitudes.append(point_list_unique.loc[i, 'latitude'])
         longitudes.append(point_list_unique.loc[i, 'longitude'])
         persons.append(point_list_unique.loc[i, 'person'])
+    """
 
-
-        colors = []
+    colors = []
     for i,names in enumerate(persons):
         if names == 'Ben':
             colors.append('red')
@@ -195,11 +205,12 @@ def plots(person, year, month):
                          mode="markers",
                          lon = longitudes,
                          lat = latitudes,
-                         marker = dict({'size' : list(map(lambda x: 2.5*x,list(map(log,counts))))},
+                         marker = dict(size=location_data.groupby(['longitude','latitude'])['datetime'].count(),
+                                       #dict({'size' : list(map(lambda x: 2.5*x,list(map(log,location_data_useful['0']))))},
                                        color=colors,
                                        alpha=0.1))
 
-    data_bar=dict(type='bar', x=x_bar, y=counts)
+    data_bar=dict(type='bar', x=x_bar, y=location_data_useful['0'])
 
     layout_bar = dict(title=dict(text='Most Popular Countries'),
                       yaxis=dict(title='# of People'),
