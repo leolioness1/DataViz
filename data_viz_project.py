@@ -19,12 +19,10 @@ name_options = [dict(label=name, value=name) for name in location_data['person']
 year_options = [dict(label=year, value=year) for year in location_data['year'].unique()]
 initial_year = list(range(min(location_data['year']),max(location_data['year'])))
 
-#external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
-
+server = app.server
 app.layout = html.Div([
 
     html.Div([
@@ -59,9 +57,8 @@ app.layout = html.Div([
     ], className='row'),
 
     html.Div([
+        html.Div([dcc.Graph(id='bar-graph')], className='column1 pretty'),
         html.Br(),
-        # html.Div([dcc.Graph(id='heatmap')], className='column1 pretty'),
-
         html.Div([dcc.Graph(id='heatmap')], className='column3 pretty')
 
     ], className='row'),
@@ -70,16 +67,23 @@ app.layout = html.Div([
 
 @app.callback(
     [Output('graph-with-slider', 'figure'),
-    Output('heatmap','figure')],
+     Output('heatmap','figure'),
+     Output('bar-graph','figure')],
     [Input('year-slider', 'value'),
      Input('person_drop','value')])
 
 def update_figure(selected_year,person_selected):
     filtered_df = location_data[location_data.year == selected_year]
     traces = []
+    lines = []
     filtered_df=filtered_df[filtered_df.person.isin(person_selected)]
+    filtered_people_df = location_data.copy(deep=True)
+    filtered_people_df['location'] = filtered_people_df['latitude'].map(str) + filtered_people_df['longitude'].map(str)
+    filtered_people_df.drop(['latitude', 'longitude'], axis=1, inplace=True)
+    df_line = pd.DataFrame(filtered_people_df.groupby(['year','person'])['location'].nunique()).reset_index()
     for i in filtered_df.person.unique():
         df_by_person= filtered_df[filtered_df['person'] == i]
+        df_by_person_line = df_line[df_line['person'] == i]
         if i =='Leo':
             color_person='blue'
         elif i=='Pedro':
@@ -97,11 +101,22 @@ def update_figure(selected_year,person_selected):
                          # size=df_by_person.groupby(['longitude','latitude'])['datetime'].count(),
                          sizeref=0.9,
                          color=color_person,
-                         opacity=0.9,
+                         opacity=0.9),
                          name=i,
-                         labelgrup=i
+                         legendgroup =i
                            )
-                        ))
+                        )
+        lines.append(dict(
+            x=df_by_person_line['year'],
+            y=df_by_person_line['location'],
+            mode='markers+lines',
+            opacity=0.7,
+            marker={
+                'size': 5,
+                'line': {'width': 0.5, 'color': color_person}
+            },
+            name=i
+        ))
 
     fig = go.Figure(go.Densitymapbox(lat=filtered_df['latitude'], lon=filtered_df['longitude'],
                                      radius=10))
@@ -122,7 +137,17 @@ def update_figure(selected_year,person_selected):
                                       x=0.91,
                                       y=1)
     )
-    },fig]
+    },
+        fig,
+        {
+        'data': lines,
+        'layout': dict(
+            xaxis={'title': 'Year'},
+            yaxis={'title': 'Locations'},
+            margin={'l': 40, 'b': 40, 't': 10, 'r': 10},
+            legend={'x': 0, 'y': 1}
+        )
+    }]
 
 if __name__ == '__main__':
     app.run_server(debug=True)
