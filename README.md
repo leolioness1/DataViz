@@ -1,3 +1,3 @@
 # Deploying your Dash app online
 
-Enjoy at https://appdatavisu.herokuapp.com/
+Enjoy at http://data-vis-13.herokuapp.com/
